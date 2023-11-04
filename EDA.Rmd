@@ -1,0 +1,45 @@
+---
+title: "eda"
+author: "thomas"
+date: "2023-11-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(httr)
+library(jsonlite)
+```
+
+## EDA
+## Data Combination
+
+```{r}
+# Import Datasets from NOAA
+detail2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_details-ftp_v1.0_d2020_c20230927.csv")
+detail2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_details-ftp_v1.0_d2021_c20231017.csv")
+location2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_locations-ftp_v1.0_d2020_c20231017.csv")
+location2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_locations-ftp_v1.0_d2021_c20231017.csv")
+```
+```{r}
+#Import Datasets from FEMA
+data_url <- "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries.json"
+
+# Making the GET request to the data URL
+response <- GET(url = data_url)
+
+# Check the response status code
+print(status_code(response))
+
+# Parse the content of the response into a dataframe
+data <- install.packages("jsonlite")
+(rawToChar(response$content))
+
+# Convert the data to a dataframe
+df <- as.data.frame(data$DisasterDeclarationsSummaries)
+
+# Display the first few rows of the dataframe
+head(df)
+```
+
