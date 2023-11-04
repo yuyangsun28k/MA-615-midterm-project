@@ -13,7 +13,7 @@ library(jsonlite)
 ```
 
 ## EDA
-## Data Combination
+## Import Datasets
 
 ```{r}
 # Import Datasets from NOAA
@@ -21,6 +21,18 @@ detail2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_d
 detail2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_details-ftp_v1.0_d2021_c20231017.csv")
 location2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_locations-ftp_v1.0_d2020_c20231017.csv")
 location2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_locations-ftp_v1.0_d2021_c20231017.csv")
+
+# Filter EVENT_TYPE to flood for detail2021, detail2020
+detail2020 <- detail2020[detail2020$EVENT_TYPE == "Flood", ]
+detail2021 <- detail2021[detail2021$EVENT_TYPE == "Flood", ]
+
+# Check the unique values in the incidentType column
+unique_incidents1 <- unique(floodv1$incidentType)
+unique_incidents2 <- unique(floodv1$incidentType)
+
+# Print the unique incident types
+print(unique_incidents1)
+print(unique_incidents2)
 ```
 
 
@@ -84,4 +96,56 @@ print(unique_incidents)
 
 ```
 
+
+## Data Cleaning
+
+```{r}
+# List all columns in the dataset
+namefloodv1 <- names(floodv1)
+namefloodv2 <- names(floodv2)
+namedetail2020 <- names(detail2020)
+namedetail2021 <- names(detail2021)
+namelocation2020 <- names(location2020)
+namelocation2021 <- names(location2021)
+
+# Print the column names
+# Print column names for each dataset
+print(namefloodv1)
+print(namefloodv2)
+print(namedetail2020)
+print(namedetail2021)
+print(namelocation2020)
+print(namelocation2021)
+
+```
+## Merge detail2020 and location2020; detail2021 and location2021
+```{r}
+# Merge the datasets 2020
+combined2020 <- merge(detail2020, location2020, by = c("EVENT_ID", "EPISODE_ID"))
+
+# Check the first few rows of the combined dataset
+head(combined2020)
+
+# Merge the datasets 2021
+combined2021 <- merge(detail2021, location2021, by = c("EVENT_ID", "EPISODE_ID"))
+
+# Check the first few rows of the combined dataset
+head(combined2021)
+
+# Combine the datasets for 2020 and 2021
+combinedNOAA <- rbind(combined2020, combined2021)
+```
+
+```{r}
+# Merge the datasets using 'disasterNumber'
+combinedFEMA <- merge(floodv1, floodv2, by = "disasterNumber")
+```
+
+## Merge into one single dataset
+
+```{r}
+# Check the first few rows of the combined dataset
+head(combinedNOAA)
+head(combinedFEMA)
+```
 
