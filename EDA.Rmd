@@ -22,8 +22,42 @@ detail2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_d
 location2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_locations-ftp_v1.0_d2020_c20231017.csv")
 location2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_locations-ftp_v1.0_d2021_c20231017.csv")
 ```
+
+
 ```{r}
-#Import Datasets from FEMA
+#Import Datasets from FEMA v1
+data_url <- "https://www.fema.gov/api/open/v1/DisasterDeclarationsSummaries.json"
+
+# Making the GET request to the data URL
+response <- GET(url = data_url)
+
+# Check the response status code
+print(status_code(response))
+
+# Parse the content of the response into a dataframe
+data <- fromJSON(rawToChar(response$content))
+
+# Convert the data to a dataframe
+df1 <- as.data.frame(data$DisasterDeclarationsSummaries)
+floodv1 <- df1[df1$incidentType == "Flood", ]
+
+# Display the first few rows of the dataframe
+head(df1)
+
+# Display the first few rows of the dataframe
+head(floodv1)
+
+# Check the unique values in the incidentType column
+unique_incidents <- unique(floodv1$incidentType)
+
+# Print the unique incident types
+print(unique_incidents)
+
+```
+
+
+```{r}
+#Import Datasets from FEMA v2
 data_url <- "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries.json"
 
 # Making the GET request to the data URL
@@ -33,13 +67,21 @@ response <- GET(url = data_url)
 print(status_code(response))
 
 # Parse the content of the response into a dataframe
-data <- install.packages("jsonlite")
-(rawToChar(response$content))
+data <- fromJSON(rawToChar(response$content))
 
 # Convert the data to a dataframe
-df <- as.data.frame(data$DisasterDeclarationsSummaries)
+df2 <- as.data.frame(data$DisasterDeclarationsSummaries)
+floodv2 <- df2[df2$incidentType == "Flood", ]
 
 # Display the first few rows of the dataframe
-head(df)
+head(floodv2)
+
+# Check the unique values in the incidentType column
+unique_incidents <- unique(floodv2$incidentType)
+
+# Print the unique incident types
+print(unique_incidents)
+
 ```
+
 
