@@ -148,4 +148,25 @@ combinedFEMA <- merge(floodv1, floodv2, by = "disasterNumber")
 head(combinedNOAA)
 head(combinedFEMA)
 ```
+## Import census data
+```{r}
+#census 5225
+meta2020_1_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2020.S1701-Column-Metadata.csv")
+meta2020_2_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2020.S1701-Data.csv")
+meta2021_1_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2021.S1701-Column-Metadata.csv")
+meta2021_2_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2021.S1701-Data.csv")
+
+#census 0133
+meta2020_1_0133 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140133/ACSDP5Y2020.DP05-Column-Metadata.csv")
+meta2020_2_0133 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140133/ACSDP5Y2020.DP05-Data.csv")
+meta2021_1_0133 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140133/ACSDP5Y2021.DP05-Column-Metadata.csv")
+meta2021_2_0133 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140133/ACSDP5Y2021.DP05-Data.csv")
+
+#census 0147
+meta2020_1_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140147/ACSDT5Y2020.B25001-Column-Metadata.csv")
+meta2020_2_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140147/ACSDT5Y2020.B25001-Data.csv")
+meta2021_1_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140147/ACSDT5Y2021.B25001-Column-Metadata.csv")
+meta2021_2_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140147/ACSDT5Y2021.B25001-Data.csv")
+```
+
 
