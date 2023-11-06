@@ -13,6 +13,9 @@ library(jsonlite)
 library(dplyr)
 library(readr)
 library(lubridate)
+library(stringr)
+library(plotly)
+
 ```
 
 ## Data Upload
@@ -157,11 +160,12 @@ combinedFEMA <- floodv1 %>%
 
 ## Deep cleaning NOAA
 
+### Glimpse
 ```{r}
 # glimpse
 glimpse(dangerousflood)
 ```
-### States
+### States counts
 
 ```{r}
 # Check all states
@@ -181,5 +185,59 @@ top_states <- state_all %>%
   top_n(5, Count)
 print(top_states)
 ```
-### 
+### State vs damage
+```{r warning=FALSE}
+# Function to convert damage values to numeric
+convert_damage_to_numeric <- function(damage) {
+  # Remove any characters that are not digits or decimal points
+  damage <- gsub("[^0-9.]", "", as.character(damage))
+  # Convert to numeric
+  as.numeric(damage)
+}
+
+# Clean DAMAGE_PROPERTY and DAMAGE_CROPS columns
+dangerousflood$DAMAGE_PROPERTY <- convert_damage_to_numeric(dangerousflood$DAMAGE_PROPERTY)
+dangerousflood$DAMAGE_CROPS <- convert_damage_to_numeric(dangerousflood$DAMAGE_CROPS)
+
+# Now, summarize the total damage by state
+state_damage <- dangerousflood %>%
+  group_by(STATE) %>%
+  summarise(Total_Damage_Property = sum(DAMAGE_PROPERTY, na.rm = TRUE),
+            Total_Damage_Crops = sum(DAMAGE_CROPS, na.rm = TRUE))
+
+# View the warnings from the last summarise operation
+dplyr::last_dplyr_warnings()
+state_damage <- dangerousflood %>%
+  group_by(STATE) %>%
+  summarise(Total_Damage_Property = sum(as.numeric(DAMAGE_PROPERTY), na.rm = TRUE),
+            Total_Damage_Crops = sum(as.numeric(DAMAGE_CROPS), na.rm = TRUE))
+
+#total property damage
+ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Property), y = Total_Damage_Property)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Total Property Damage by State",
+       x = "State",
+       y = "Total Property Damage") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Log transform of total crop damage
+ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Crops), y = log(Total_Damage_Crops + 1))) +
+  geom_bar(stat = "identity", fill = "cyan4") +
+  labs(title = "Log of Total Crop Damage by State",
+       x = "State",
+       y = "Log of Total Crop Damage") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r warning=FALSE}
+p <- ggplot(state_damage, aes(x = Total_Damage_Property, y = Total_Damage_Crops)) +
+  geom_point(aes(text = STATE, color = STATE), size = 3, alpha = 0.6) +
+  labs(title = "Scatter Plot of Property vs. Crop Damage by State",
+       x = "Total Property Damage",
+       y = "Total Crop Damage")
+
+ggplotly(p, tooltip = "text")
+
+```
 
