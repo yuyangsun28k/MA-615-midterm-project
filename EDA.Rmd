@@ -15,7 +15,7 @@ library(readr)
 library(lubridate)
 ```
 
-## Data cleaning
+## Data Upload
 
 ### Import NOAA Data
 
@@ -75,7 +75,6 @@ colnames(combined)
 ##### Check how dengerous flood is
 ```{r}
 dangerousflood <- combined[, c("EVENT_ID", "EPISODE_ID", "STATE", "YEAR", "MONTH_NAME", "EVENT_TYPE","INJURIES_DIRECT", "INJURIES_INDIRECT", "DEATHS_DIRECT", "DEATHS_INDIRECT",  "DAMAGE_PROPERTY", "DAMAGE_CROPS", "FLOOD_CAUSE", "CATEGORY","BEGIN_LOCATION", "END_LOCATION", "LATITUDE", "LONGITUDE","FATALITY_AGE", "FATALITY_SEX", "FATALITY_LOCATION")]
-head(dangerousflood)
 ```
 
 ### Import census data
@@ -155,4 +154,32 @@ print(unique_incidents)
 combinedFEMA <- floodv1 %>%
   inner_join(floodv2, by = "disasterNumber")
 ```
+
+## Deep cleaning NOAA
+
+```{r}
+# glimpse
+glimpse(dangerousflood)
+```
+### States
+
+```{r}
+# Check all states
+state_all <- dangerousflood |> group_by(STATE) |> count()
+# if(sum(state_all$n) == dim(dangerousflood)[1])
+  {print("Every row has value in the State column.")}
+print(state_all)
+# The most counts of states
+state_max <- state_all$STATE[which(state_all$n ==  max(state_all$n)  )]
+print(state_max)
+# Group by STATE and count the number of occurrences
+state_all <- dangerousflood %>% 
+  group_by(STATE) %>% 
+  summarise(Count= n())
+# Top counts of states
+top_states <- state_all %>% 
+  top_n(5, Count)
+print(top_states)
+```
+### 
 
