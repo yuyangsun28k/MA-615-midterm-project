@@ -15,7 +15,8 @@ library(readr)
 library(lubridate)
 library(stringr)
 library(plotly)
-
+library(maps)
+library(reshape2)
 ```
 
 ## Data Upload
@@ -77,7 +78,14 @@ colnames(combined)
 
 ##### Check how dengerous flood is
 ```{r}
-dangerousflood <- combined[, c("EVENT_ID", "EPISODE_ID", "STATE", "YEAR", "MONTH_NAME", "EVENT_TYPE","INJURIES_DIRECT", "INJURIES_INDIRECT", "DEATHS_DIRECT", "DEATHS_INDIRECT",  "DAMAGE_PROPERTY", "DAMAGE_CROPS", "FLOOD_CAUSE", "CATEGORY","BEGIN_LOCATION", "END_LOCATION", "LATITUDE", "LONGITUDE","FATALITY_AGE", "FATALITY_SEX", "FATALITY_LOCATION")]
+dangerousflood <- combined[, c("EVENT_ID", "EPISODE_ID", "STATE", "YEAR", "MONTH_NAME", "EVENT_TYPE","INJURIES_DIRECT", "INJURIES_INDIRECT", "DEATHS_DIRECT", "DEATHS_INDIRECT",  "DAMAGE_PROPERTY", "DAMAGE_CROPS", "FLOOD_CAUSE", "CATEGORY","BEGIN_LOCATION", "END_LOCATION", "LATITUDE", "LONGITUDE","FATALITY_AGE", "FATALITY_SEX", "FATALITY_LOCATION","BEGIN_DATE_TIME")]
+
+# Convert BEGIN_DATE_TIME to Date format
+dangerousflood$BEGIN_DATE <- as.Date(dangerousflood$BEGIN_DATE_TIME, format = "%d-%b-%y %H:%M:%S")
+
+# Check the first few dates to ensure they were converted correctly
+head(dangerousflood$BEGIN_DATE)
+
 ```
 
 ### Import census data
@@ -184,6 +192,7 @@ state_all <- dangerousflood %>%
 top_states <- state_all %>% 
   top_n(5, Count)
 print(top_states)
+
 ```
 ### State vs damage
 ```{r warning=FALSE}
@@ -228,16 +237,108 @@ ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Crops), y = log(Total_
        y = "Log of Total Crop Damage") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+#Total Property Damage in a map visual
+# Get US map data
+states_map <- map_data("state")
+
+# Aggregate total property damages by state
+state_damage_totals <- dangerousflood %>%
+  group_by(STATE) %>%
+  summarise(Total_Damage_Property = sum(DAMAGE_PROPERTY, na.rm = TRUE)) %>%
+  mutate(STATE = tolower(STATE)) # Ensure state names match map data
+
+# Merge map data with total property damages
+map_data_merged <- merge(states_map, state_damage_totals, by.x = "region", by.y = "STATE", all.x = TRUE)
+
+# Plot
+ggplot() +
+  geom_polygon(data = map_data_merged, aes(x = long, y = lat, group = group, fill = Total_Damage_Property), color = "white") +
+  scale_fill_continuous(low = "white", high = "red", na.value = "grey50", name = "Total Property Damage") +
+  labs(title = "Total Property Damage by State") +
+  theme_void() +
+  theme(legend.position = "right")
+
+
+# Aggregate total crop damages by state
+state_crop_damage_totals <- dangerousflood %>%
+  group_by(STATE) %>%
+  summarise(Total_Damage_Crops = sum(DAMAGE_CROPS, na.rm = TRUE)) %>%
+  mutate(STATE = tolower(STATE)) # Ensure state names match map data
+
+# Merge map data with total crop damages
+map_data_merged_crops <- merge(states_map, state_crop_damage_totals, by.x = "region", by.y = "STATE", all.x = TRUE)
+
+# Plot for Total Crop Damage with adjusted color scale and legend
+ggplot() +
+  geom_polygon(data = map_data_merged_crops, aes(x = long, y = lat, group = group, fill = Total_Damage_Crops), color = "white") +
+  scale_fill_continuous(name = "Total Crop Damage", 
+                        trans = "log1p", # Log transformation to better visualize the range
+                        low = "lightgreen", high = "darkgreen", 
+                        na.value = "grey50", # Grey color for states with NA values
+                        breaks = scales::trans_breaks("log1p", function(x) 10^x), # Adjust breaks for log scale
+                        labels = scales::trans_format("log1p", scales::math_format(10^.x))) + # Adjust labels for log scale
+  labs(title = "Total Crop Damage by State") +
+  theme_void() +
+  theme(legend.position = "right",
+        legend.key.width = unit(1.5, "cm"), # Adjust legend key width
+        legend.title = element_text(size = 10), # Adjust legend title size
+        legend.text = element_text(size = 8)) # Adjust legend text size
+
 ```
 
-```{r warning=FALSE}
-p <- ggplot(state_damage, aes(x = Total_Damage_Property, y = Total_Damage_Crops)) +
-  geom_point(aes(text = STATE, color = STATE), size = 3, alpha = 0.6) +
-  labs(title = "Scatter Plot of Property vs. Crop Damage by State",
-       x = "Total Property Damage",
-       y = "Total Crop Damage")
 
-ggplotly(p, tooltip = "text")
+
+### Injuries & Deaths
+```{r}
+# Summarize death counts by state
+death_counts_by_state <- dangerousflood %>%
+  group_by(STATE) %>%
+  summarise(Total_Deaths = sum(DEATHS_DIRECT + DEATHS_INDIRECT))
+
+# Summarize injury counts by state
+injury_counts_by_state <- dangerousflood %>%
+  group_by(STATE) %>%
+  summarise(Total_Injuries = sum(INJURIES_DIRECT + INJURIES_INDIRECT))
+
+# Base plot with death counts in green
+p_combined <- plot_ly(death_counts_by_state, x = ~reorder(STATE, -Total_Deaths), y = ~Total_Deaths, type = 'bar', marker = list(color = 'green'), name = 'Deaths') %>%
+  layout(title = "Total Counts Due to Floods by State",
+         xaxis = list(title = "State", tickangle = 45),
+         yaxis = list(title = "Total Counts"))
+
+# Add injury counts to the same plot in blue
+p_combined <- p_combined %>%
+  add_trace(data = injury_counts_by_state, x = ~reorder(STATE, -Total_Injuries), y = ~Total_Injuries, type = 'bar', marker = list(color = 'blue'), name = 'Injuries')
+
+# Render the combined plot
+p_combined
+
 
 ```
 
+```{r}
+# Convert BEGIN_DATE_TIME to Date format
+dangerousflood$BEGIN_DATE <- as.Date(dangerousflood$BEGIN_DATE_TIME, format = "%d-%b-%y %H:%M:%S")
+
+# Aggregate injuries and deaths by date
+injuries_deaths_by_date <- dangerousflood %>%
+  group_by(BEGIN_DATE) %>%
+  summarise(Total_Injuries = sum(INJURIES_DIRECT + INJURIES_INDIRECT),
+            Total_Deaths = sum(DEATHS_DIRECT + DEATHS_INDIRECT))
+
+# Time Series Line Plot of Total Injuries Over Time
+p_injuries <- plot_ly(data = injuries_deaths_by_date, x = ~BEGIN_DATE, y = ~Total_Injuries, type = 'scatter', mode = 'lines', line = list(color = 'cyan4'), name = 'Injuries') %>%
+  layout(title = "Time Series of Total Injuries & Deaths Over Time",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Total Injuries"))
+
+# Time Series Line Plot of Total Deaths Over Time
+p_deaths <- plot_ly(data = injuries_deaths_by_date, x = ~BEGIN_DATE, y = ~Total_Deaths, type = 'scatter', mode = 'lines', line = list(color = 'red'), name = 'Deaths') %>%
+  layout(title = "Time Series of Total Injuries & Deaths Over Time",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Total Deaths"))
+
+# Arrange the plots in a grid
+subplot(p_injuries, p_deaths, nrows = 2, shareX = TRUE, titleX = FALSE)
+
+```
