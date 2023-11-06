@@ -10,10 +10,14 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(httr)
 library(jsonlite)
+library(dplyr)
+library(readr)
+library(lubridate)
 ```
 
-## EDA
-## Import Datasets
+## Data cleaning
+
+### Import NOAA Data
 
 ```{r}
 # Import Datasets from NOAA
@@ -21,138 +25,65 @@ detail2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_d
 detail2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_details-ftp_v1.0_d2021_c20231017.csv")
 location2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_locations-ftp_v1.0_d2020_c20231017.csv")
 location2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_locations-ftp_v1.0_d2021_c20231017.csv")
+fata2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_fatalities-ftp_v1.0_d2020_c20230927.csv")
+fata2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_fatalities-ftp_v1.0_d2021_c20231017.csv")
 
-# Filter EVENT_TYPE to flood for detail2021, detail2020
-detail2020 <- detail2020[detail2020$EVENT_TYPE == "Flood", ]
-detail2021 <- detail2021[detail2021$EVENT_TYPE == "Flood", ]
-
-# Check the unique values in the incidentType column
-unique_incidents1 <- unique(floodv1$incidentType)
-unique_incidents2 <- unique(floodv1$incidentType)
-
-# Print the unique incident types
-print(unique_incidents1)
-print(unique_incidents2)
 ```
 
+#### Merge detail2020 ,fata 2020 and location2020; detail2021, fata 2021 and location2021
 
 ```{r}
-#Import Datasets from FEMA v1
-data_url <- "https://www.fema.gov/api/open/v1/DisasterDeclarationsSummaries.json"
+# Validate keys
+if(any(duplicated(detail2020$EVENT_ID)) | any(duplicated(detail2021$EVENT_ID))) {
+  stop("Duplicate EVENT_IDs found in detail datasets.")
+}
 
-# Making the GET request to the data URL
-response <- GET(url = data_url)
+# Pre-process datasets (if necessary, based on your analysis needs)
 
-# Check the response status code
-print(status_code(response))
+# Merge in steps
+combinedDetails <- rbind(detail2020, detail2021)
+combinedLocations <- rbind(location2020, location2021)
+combinedFatalities <- rbind(fata2020, fata2021)
 
-# Parse the content of the response into a dataframe
-data <- fromJSON(rawToChar(response$content))
+combined <- merge(combinedDetails, combinedLocations, by = c("EVENT_ID", "EPISODE_ID"), all = TRUE)
+combined <- merge(combined, combinedFatalities, by = "EVENT_ID", all.x = TRUE)
 
-# Convert the data to a dataframe
-df1 <- as.data.frame(data$DisasterDeclarationsSummaries)
-floodv1 <- df1[df1$incidentType == "Flood", ]
+# Post-process merged dataset
+combined <- combined[!duplicated(combined$EVENT_ID), ]
 
-# Display the first few rows of the dataframe
-head(df1)
+# Consistency check (based on your analysis needs)
 
-# Display the first few rows of the dataframe
-head(floodv1)
+# Define the types of floods to filter
+floodTypes <- c("Flood", "Coastal Flood", "Flash Flood", "Lakeshore Flood")
 
-# Check the unique values in the incidentType column
-unique_incidents <- unique(floodv1$incidentType)
+# Filter for Flood events
+combined <- combined[combined$EVENT_TYPE %in% floodTypes, ]
 
-# Print the unique incident types
+# Get unique incidents of flood and print them
+unique_incidents <- unique(combined$EVENT_TYPE)
 print(unique_incidents)
 
 ```
 
-
+#### Clean NOAA Data
 ```{r}
-#Import Datasets from FEMA v2
-data_url <- "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries.json"
-
-# Making the GET request to the data URL
-response <- GET(url = data_url)
-
-# Check the response status code
-print(status_code(response))
-
-# Parse the content of the response into a dataframe
-data <- fromJSON(rawToChar(response$content))
-
-# Convert the data to a dataframe
-df2 <- as.data.frame(data$DisasterDeclarationsSummaries)
-floodv2 <- df2[df2$incidentType == "Flood", ]
-
-# Display the first few rows of the dataframe
-head(floodv2)
-
-# Check the unique values in the incidentType column
-unique_incidents <- unique(floodv2$incidentType)
-
-# Print the unique incident types
-print(unique_incidents)
-
+#colnames(combined)
+combined <- combined[, -which(names(combined) %in% c("WFO", "CZ_TIMEZONE", "SOURCE","TOR_WIDTH", "TOR_LENGTH", "TOR_OTHER_CZ_FIPS", "TOR_OTHER_CZ_NAME", "TOR_OTHER_CZ_STATE", "TOR_F_SCALE","CZ_TYPE","CZ_FIPS","CZ_NAME","EVENT_NARRATIVE","EPISODE_NARRATIVE","END_AZIMUTH","END_RANGE","BEGIN_RANGE","BEGIN_AZIMUTH","LAT2","LON2","RANGE","AZIMUTH","LOCATION_INDEX","MAGNITUDE_TYPE","MAGNITUDE","STATE_FLIPS"))]
+colnames(combined)
 ```
 
-
-## Data Cleaning
-
+##### Check how dengerous flood is
 ```{r}
-# List all columns in the dataset
-namefloodv1 <- names(floodv1)
-namefloodv2 <- names(floodv2)
-namedetail2020 <- names(detail2020)
-namedetail2021 <- names(detail2021)
-namelocation2020 <- names(location2020)
-namelocation2021 <- names(location2021)
-
-# Print the column names
-# Print column names for each dataset
-print(namefloodv1)
-print(namefloodv2)
-print(namedetail2020)
-print(namedetail2021)
-print(namelocation2020)
-print(namelocation2021)
-
-```
-## Merge detail2020 and location2020; detail2021 and location2021
-```{r}
-# Merge the datasets 2020
-combined2020 <- merge(detail2020, location2020, by = c("EVENT_ID", "EPISODE_ID"))
-
-# Check the first few rows of the combined dataset
-head(combined2020)
-
-# Merge the datasets 2021
-combined2021 <- merge(detail2021, location2021, by = c("EVENT_ID", "EPISODE_ID"))
-
-# Check the first few rows of the combined dataset
-head(combined2021)
-
-# Combine the datasets for 2020 and 2021
-combinedNOAA <- rbind(combined2020, combined2021)
+dangerousflood <- combined[, c("EVENT_ID", "EPISODE_ID", "STATE", "YEAR", "MONTH_NAME", "EVENT_TYPE","INJURIES_DIRECT", "INJURIES_INDIRECT", "DEATHS_DIRECT", "DEATHS_INDIRECT",  "DAMAGE_PROPERTY", "DAMAGE_CROPS", "FLOOD_CAUSE", "CATEGORY","BEGIN_LOCATION", "END_LOCATION", "LATITUDE", "LONGITUDE","FATALITY_AGE", "FATALITY_SEX", "FATALITY_LOCATION")]
+head(dangerousflood)
 ```
 
-```{r}
-# Merge the datasets using 'disasterNumber'
-combinedFEMA <- merge(floodv1, floodv2, by = "disasterNumber")
-```
+### Import census data
 
-## Merge into one single dataset
-
-```{r}
-# Check the first few rows of the combined dataset
-head(combinedNOAA)
-head(combinedFEMA)
-```
-## Import census data
 ```{r}
 #census 5225
 meta2020_1_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2020.S1701-Column-Metadata.csv")
-meta2020_2_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2020.S1701-Data.csv")
+meta2020_2_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2020.S1701-Data.csv", skip = 1)
 meta2021_1_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2021.S1701-Column-Metadata.csv")
 meta2021_2_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2021.S1701-Data.csv")
 
@@ -169,4 +100,59 @@ meta2021_1_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Downlo
 meta2021_2_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140147/ACSDT5Y2021.B25001-Data.csv")
 ```
 
+#### Edit census data 5225
+```{r}
+
+```
+
+
+### Import FEMA datasets
+
+```{r}
+#Import Datasets from FEMA v1
+data_url <- "https://www.fema.gov/api/open/v1/FemaWebDisasterSummaries.json"
+
+# Making the GET request to the data URL
+response <- GET(url = data_url)
+
+# Check the response status code
+print(status_code(response))
+
+# Parse the content of the response into a dataframe
+data <- fromJSON(rawToChar(response$content))
+
+# Convert the data to a dataframe
+floodv1 <- as.data.frame(data$FemaWebDisasterSummaries)
+
+```
+
+```{r}
+# Import Datasets from FEMA v2
+# Correctly encode the URL
+data_url <- "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries.json?$filter=incidentType%20eq%20%27Flood%27%20and%20(incidentBeginDate%20ge%20%272020-01-01T00:00:00.000Z%27%20and%20incidentBeginDate%20le%20%272021-12-31T23:59:59.000Z%27)"
+
+# Making the GET request to the data URL
+response <- GET(url = data_url)
+
+# Check the response status code
+print(status_code(response))
+
+# Parse the content of the response into a dataframe
+data <- fromJSON(rawToChar(response$content))
+
+# Convert the data to a dataframe
+floodv2 <- as.data.frame(data$DisasterDeclarationsSummaries)
+
+# Check the unique values in the incidentType column
+unique_incidents <- unique(floodv2$incidentType)
+
+# Print the unique incident types
+print(unique_incidents)
+
+```
+#### Merge FEMA datasets
+```{r}
+combinedFEMA <- floodv1 %>%
+  inner_join(floodv2, by = "disasterNumber")
+```
 
