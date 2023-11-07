@@ -630,6 +630,40 @@ ggplot(average_crop_damage_summary, aes(x = reorder(EVENT_TYPE, -Average_Crop_Da
 
 ```
 
+Flash floods emerge as the predominant culprits for crop losses, underscoring their intense and often localized impact on agricultural areas. General floods also contribute to a considerable extent to the average crop damage, although to a lesser degree than flash floods. In stark contrast, coastal and lakeshore floods are found to have a negligible effect on crop damage. This lack of impact could be due to the geographical locations of such floods, which may not typically overlap with agricultural zones. These findings highlight the variable threats that different types of floods pose to agricultural livelihoods and can inform tailored approaches to agricultural risk management and resilience building.
+
+#### FLood Type vs Injuries/Deaths
+
+```{r warning=FALSE}
+dangerousflood <- dangerousflood %>%
+  mutate(Total_Injuries = INJURIES_DIRECT + INJURIES_INDIRECT,
+         Total_Deaths = DEATHS_DIRECT + DEATHS_INDIRECT)
+
+# Summarize total injuries and deaths by flood type
+injuries_deaths_by_type <- dangerousflood %>%
+  group_by(EVENT_TYPE) %>%
+  summarise(Total_Injuries = sum(Total_Injuries, na.rm = TRUE),
+            Total_Deaths = sum(Total_Deaths, na.rm = TRUE)) %>%
+  ungroup()
+
+# Reshape the data into long format
+injuries_deaths_long <- injuries_deaths_by_type %>%
+  pivot_longer(cols = c(Total_Injuries, Total_Deaths), names_to = "Metric", values_to = "Count")
+
+# Create the plot
+ggplot(injuries_deaths_long, aes(x = EVENT_TYPE, y = Count, fill = Metric)) +
+  geom_bar(stat = 'identity', position = 'dodge') +
+  scale_fill_manual(values = c("cyan4", "maroon")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "top") + # Move legend to the top for better readability
+  labs(title = 'Injuries and Deaths by Flood Type',
+       x = 'Flood Type',
+       y = 'Count',
+       fill = 'Metric')
+```
+
+
 
 #### models to check
 ```{r}
