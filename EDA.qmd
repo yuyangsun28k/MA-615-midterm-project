@@ -1,5 +1,5 @@
 ---
-title: "eda"
+title: "Floods Unfolded: A Data-Driven Exploration of Flood Events in the US"
 author: "Yuyang Sun"
 date: "2023-11-03"
 output:
@@ -24,16 +24,20 @@ library(caret)
 ```
 
 ## Project Description
-Floods are among the most destructive natural disasters. In the United States, natural disaster recovery is
-managed by (FEMA) Federal Emergency Managment Agency.
-One interesting aspect of floods is that they can occur almost anywhere. 
-Assemble a dataset to investigate floods in 2020-2021. Use the data resources below to assemble your data.
-Clean and organize the data. Write an EDA report.
+In this exploratory data analysis (EDA) report, we delve into NOAA dataset to gauge the dangers posed by floods within the United States. Our investigation aims to quantify the peril and financial repercussions of flood events, analyzing their severity and the economic burdens they impose.
 
-Questions to be answered:
-How dangerous are floods? 
-How expensive? 
-Is there any pattern to the kinds of communities that suffer losses from floods?
+we seek to answer pressing questions about the nature and consequences of floods:
+
+How Dangerous are Floods?
+We will explore the human toll of flood events by examining metrics such as injury and death counts. This will provide insights into the physical danger floods pose to communities.
+
+How Expensive are Floods?
+We will assess the economic impact of floods by analyzing property and crop damage estimates. This will shed light on the financial strain floods inflict on individuals and the broader economic system.
+
+Community Patterns in Flood Losses:
+By investigating the geographical and temporal patterns of flood events and their consequences, we aim to discern any trends in the types of communities that bear the brunt of flood losses. This includes evaluating demographic, economic, and geographic factors that may correlate with higher levels of damage and distress.
+
+This comprehensive EDA will utilize visualization tools and statistical analysis to present a clear picture of flood impacts, aiming to inform policymakers, community planners, and the general public. Our objective is to enhance understanding and preparedness for future flood events, potentially guiding efforts to mitigate risks and improve community resilience.
 
 ## Datasets
 There are three files in total. Datasets from NOAA, datasets from FEMA and census data.
@@ -43,10 +47,11 @@ FEMA1: https://www.fema.gov/openfema-data-page/fema-web-disaster-summaries-v1
 FEMA2: https://www.fema.gov/openfema-data-page/disaster-declarations-summaries-v2
 Census Data: https://www.census.gov (somewhere inside)
 
+
 ### Import NOAA Data
 This report focuses on data from 2020 to 2021.
 
-```{r}
+```{r, echo=FALSE}
 # Import Datasets from NOAA
 detail2020 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_details-ftp_v1.0_d2020_c20230927.csv")
 detail2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_details-ftp_v1.0_d2021_c20231017.csv")
@@ -61,7 +66,7 @@ fata2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_fat
 #### Merge detail2020 ,fata 2020 and location2020; detail2021, fata 2021 and location2021
 The detail, location and fatality datasets can be merged into one single dataset due to some common columns. This project only focuses on "FLOOD" as a disaster type. There should be four types of flodds in total: "Flood", "Lakeshore Flood", "Flash Flood", "Coastal Flood".
 
-```{r}
+```{r, echo=FALSE}
 # Validate keys
 if(any(duplicated(detail2020$EVENT_ID)) | any(duplicated(detail2021$EVENT_ID))) {
   stop("Duplicate EVENT_IDs found in detail datasets.")
@@ -90,36 +95,38 @@ combined <- combined[combined$EVENT_TYPE %in% floodTypes, ]
 
 # Get unique incidents of flood and print them
 unique_incidents <- unique(combined$EVENT_TYPE)
-print(unique_incidents)
+#print(unique_incidents)
 
 ```
 
-#### Clean NOAA Data
-The "combined" dataset is the raw dataset that I have right now. This step is to remove some columns that are not helpful for EDA, and I am going to choose some columns that I am interested.
+#### Choose specific columns from NOAA Data
+The "combined" dataset is the raw dataset that we have right now. This step is to remove some columns that are not helpful for EDA, and we are going to choose some columns that might be interesting.
 
-```{r}
+```{r, echo=FALSE}
 #colnames(combined)
 combined <- combined[, -which(names(combined) %in% c("WFO", "CZ_TIMEZONE", "SOURCE","TOR_WIDTH", "TOR_LENGTH", "TOR_OTHER_CZ_FIPS", "TOR_OTHER_CZ_NAME", "TOR_OTHER_CZ_STATE", "TOR_F_SCALE","CZ_TYPE","CZ_FIPS","CZ_NAME","EVENT_NARRATIVE","EPISODE_NARRATIVE","END_AZIMUTH","END_RANGE","BEGIN_RANGE","BEGIN_AZIMUTH","LAT2","LON2","RANGE","AZIMUTH","LOCATION_INDEX","STATE_FLIPS"))]
-colnames(combined)
+#head(combined)
 ```
 
-##### Check how dengerous flood is
-I am going to use some columns for later analysis. To be noticed, I have converted the incident begin date here (where incident corresponds to any flood).
-```{r}
+##### Generate a dataset 'dangerousflood' for further EDA
+
+This dataset contains information regarding the useful columns for EDA.
+
+```{r, echo=FALSE}
 dangerousflood <- combined[, c("EVENT_ID", "EPISODE_ID", "STATE", "YEAR", "MONTH_NAME", "EVENT_TYPE","INJURIES_DIRECT", "INJURIES_INDIRECT", "DEATHS_DIRECT", "DEATHS_INDIRECT",  "DAMAGE_PROPERTY", "DAMAGE_CROPS", "FLOOD_CAUSE", "CATEGORY","BEGIN_LOCATION", "END_LOCATION", "LATITUDE", "LONGITUDE","FATALITY_AGE", "FATALITY_SEX","FATALITY_LOCATION","BEGIN_DATE_TIME","MAGNITUDE_TYPE","MAGNITUDE")]
 
 # Convert BEGIN_DATE_TIME to Date format
 dangerousflood$BEGIN_DATE <- as.Date(dangerousflood$BEGIN_DATE_TIME, format = "%d-%b-%y %H:%M:%S")
 
 # Check the first few dates to ensure they were converted correctly
-head(dangerousflood$BEGIN_DATE)
+#head(dangerousflood$BEGIN_DATE)
 
 ```
 
 ### Import census data
-Well, I dont' find this dataset particular useful for now.
+The datasets are not used in this report.
 
-```{r}
+```{r, echo=FALSE}
 #census 5225
 meta2020_1_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2020.S1701-Column-Metadata.csv")
 meta2020_2_5225 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T135225/ACSST5Y2020.S1701-Data.csv", skip = 1)
@@ -141,9 +148,9 @@ meta2021_2_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Downlo
 
 
 ### Import FEMA datasets
-I found API endpoints from FEMA website and downloaded the data directly using API for both FEMA datasets.
+There are API endpoints from FEMA website without downloading the data directly.
 
-```{r}
+```{r, echo=FALSE}
 #Import Datasets from FEMA v1
 data_url <- "https://www.fema.gov/api/open/v1/FemaWebDisasterSummaries.json"
 
@@ -151,7 +158,7 @@ data_url <- "https://www.fema.gov/api/open/v1/FemaWebDisasterSummaries.json"
 response <- GET(url = data_url)
 
 # Check the response status code
-print(status_code(response))
+#print(status_code(response))
 
 # Parse the content of the response into a dataframe
 data <- fromJSON(rawToChar(response$content))
@@ -160,9 +167,9 @@ data <- fromJSON(rawToChar(response$content))
 floodv1 <- as.data.frame(data$FemaWebDisasterSummaries)
 
 ```
-Time for another FEMA datasets, however the sample size is small. I will pause it for now.
+FEMA dataset version 2, however the sample size is small.
 
-```{r}
+```{r, echo=FALSE}
 # Import Datasets from FEMA v2
 # Correctly encode the URL
 data_url <- "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries.json?$filter=incidentType%20eq%20%27Flood%27%20and%20(incidentBeginDate%20ge%20%272020-01-01T00:00:00.000Z%27%20and%20incidentBeginDate%20le%20%272021-12-31T23:59:59.000Z%27)"
@@ -171,7 +178,7 @@ data_url <- "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries.json
 response <- GET(url = data_url)
 
 # Check the response status code
-print(status_code(response))
+#print(status_code(response))
 
 # Parse the content of the response into a dataframe
 data <- fromJSON(rawToChar(response$content))
@@ -183,33 +190,32 @@ floodv2 <- as.data.frame(data$DisasterDeclarationsSummaries)
 unique_incidents <- unique(floodv2$incidentType)
 
 # Print the unique incident types
-print(unique_incidents)
+#print(unique_incidents)
 
 ```
 #### Merge FEMA datasets
-I tried to merge them into one dataset.
+Merge them into one dataset.
 
-```{r}
+```{r, echo=FALSE}
 combinedFEMA <- floodv1 %>%
   inner_join(floodv2, by = "disasterNumber")
+#head(combinedFEMA)
 ```
 
-## Deep cleaning NOAA dataset and EDA
-I decided to use NOAA for my report as there are many insightful columns for analysis.
 
 ### Glimpse NOAA - dangerousflood
 
-```{r}
+```{r, echo=FALSE}
 # glimpse
 glimpse(dangerousflood)
 ```
 
 ### EDA on States
-I would like to know which state have the most counts of flood, top 5 states that have the highest frequency of being attacked by flood, and the property damage + crop damage for each state.
+We aim to identify the states that are most frequently affected by flooding events. Our analysis will highlight the top five states with the highest number of recorded flood incidents. Additionally, we will quantify the impact by presenting the total property and crop damages incurred in each of these states.
 
 #### Flood counts for states
 
-```{r}
+```{r, echo=FALSE}
 # Check all states
 state_all <- dangerousflood |> group_by(STATE) |> count()
 # if(sum(state_all$n) == dim(dangerousflood)[1])
@@ -237,7 +243,7 @@ Now it's time to visualize the financial/agricultural damages of flood.
 
 ##### Property Damage
 
-```{r}
+```{r, echo=FALSE}
 # Function to convert damage values to numeric
 convert_damage_to_numeric <- function(damage) {
   if (is.na(damage) || damage == "") {
@@ -292,12 +298,12 @@ ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Property), y = Total_D
 
 ```
 
-The data indicates that New York incurs the highest total property damage from floods (over 15000k), when measured in thousands of U.S. dollars, followed by Louisana, Michigan, and Pennsylvania. This finding is consistent with the high frequency of flooding events reported in New York. Those state are mostly in eastern side of the state, suggest a higher flood impact on the east.
+The data indicates that New York incurs the highest total property damage from floods, when measured in thousands of U.S. dollars, followed by Louisana, Michigan, and Pennsylvania. This finding is consistent with the high frequency of flooding events reported in New York. Those state are mostly in eastern side of the state, suggest a higher flood impact on the east.
 
 Virginia has a low total property damage than the above states, and interestingly, Missouri, despite having a high number of flood incidents, does not correspond with similarly high levels of property damage. That might suggest an effective flood management by the state government or some location advantages that mitigate the cost.
 
 ##### Total Property Damage in a map visual
-```{r}
+```{r, echo=FALSE}
 # Function to convert character damage values to numeric
 convert_damage <- function(damage) {
   if (is.na(damage)) {
@@ -341,7 +347,7 @@ The Middle to west and Northern states report relatively minimal damage, which m
 
 ##### Crops Damage
 
-```{r}
+```{r, echo=FALSE}
 # Log transform of total crop damage
 ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Crops), y = log(Total_Damage_Crops + 1))) +
   geom_bar(stat = "identity", fill = "cyan4") +
@@ -351,12 +357,10 @@ ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Crops), y = log(Total_
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-The distribution of flood-related crop damage across various states exhibits a pronounced right skew, thus I take a log transformation to make the plot easier to interpret.
-
-However, it's important to note that the absence of crop damage data for many states and I could not get those data. Apparently, the NOAA datasets have some 'NA' values where I should pay attention to. Despite this limitation, an examination of the available data reveals that states such as the Dakotas, Minnesota, and Iowa have sustained the most severe crop damage. This pattern may reflect these states' considerable agricultural activities and their losses on agricultural lands due to flood.
+The assessment of flood-induced crop damage across states reveals a significant rightward skew in the data distribution, necessitating a logarithmic transformation to facilitate a more interpretable visual representation. It's noteworthy that crop damage data is not uniformly available for all states; numerous entries are marked as 'NA', suggesting either the absence of damage or unreported figures within the NOAA dataset. Despite this constraint, the existing data indicates that states with extensive agricultural sectors—particularly the Dakotas, Minnesota, and Iowa—bear the brunt of the damage. This pattern underscores the vulnerability of these regions' agricultural lands to flooding events and the substantial economic repercussions that ensue.
 
 ##### Total Property Damage in a map visual
-```{r}
+```{r, echo=FALSE}
 # Ensure the states_map data is loaded
 states_map <- map_data("state")
 
@@ -399,7 +403,7 @@ In the South, Texas stands out with significant crop damage, possibly attributab
 ### Injuries & Deaths
 Investigating the relationship between flood-related injuries and fatalities and their distribution among the states could provide insights into the human cost of these natural disasters and understand how dangerous flood is.
 
-```{r}
+```{r, echo=FALSE}
 # Summarize death counts by state
 death_counts_by_state <- dangerousflood %>%
   group_by(STATE) %>%
@@ -428,7 +432,7 @@ p_combined
 The data indicates that Tennessee and New York experience the highest numbers of deaths and injuries due to flooding, suggesting these states are particularly vulnerable to the more perilous consequences of such events. Texas and Arizona also report significant numbers, where probably due to the geographic location.
 
 
-```{r}
+```{r, echo=FALSE}
 # Convert BEGIN_DATE_TIME to Date format
 dangerousflood$BEGIN_DATE <- as.Date(dangerousflood$BEGIN_DATE_TIME, format = "%d-%b-%y %H:%M:%S")
 
@@ -454,12 +458,12 @@ p_deaths <- plot_ly(data = injuries_deaths_by_date, x = ~BEGIN_DATE, y = ~Total_
 subplot(p_injuries, p_deaths, nrows = 2, shareX = TRUE, titleX = FALSE)
 
 ```
-What I did here is to do a time series of how injuries and deaths occured in this particular timeframe. It turned out that between July 2021 and October 2021, a period that coincides with some of the most devastating floods. This trend underscores the heightened risk of serious harm during such events, as evidenced by the consistent occurrence of deaths throughout this timeframe. Thus, we can't conclude flood as a seasonal event.This data highlights the critical importance of effective flood management and emergency response measures all over the year, particularly during periods of high risk.
+This is a time series of how injuries and deaths occured in this particular timeframe. It turned out that between July 2021 and October 2021, a period that coincides with some of the most devastating floods. This trend underscores the heightened risk of serious harm during such events, as evidenced by the consistent occurrence of deaths throughout this timeframe. Thus, we can't conclude flood as a seasonal event.This data highlights the critical importance of effective flood management and emergency response measures all over the year, particularly during periods of high risk.
 
 ### EDA ON EVENT_TYPE / CAUSE
-The dataset contains four flood types and I am intrigued by the potential connections between 
-flood type and causes. Thus, I built a contingency table that show all the detailed information. Such a table would organize the data to show the frequency of each cause within each flood type, allowing you to identify patterns or trends in the data.
-```{r}
+The dataset contains four flood types and we are intrigued by the potential connections between 
+flood type and causes. Thus, we built a contingency table that show all the detailed information. Such a table would organize the data to show the frequency of each cause within each flood type, allowing you to identify patterns or trends in the data.
+```{r, echo=FALSE}
 # Contingency Table without NA values
 # Contingency Table
 table(dangerousflood$FLOOD_CAUSE, dangerousflood$EVENT_TYPE)
@@ -469,13 +473,13 @@ The contingency table reveals a distinct distribution of causes across different
 
 #### Flood occurences in the country 
 Thus, we created a new subset called 'coastal_lakeshore_floods', which only contains 'Lakeshore Flood' and 'Coastal Flood'.
-```{r}
+```{r, echo=FALSE}
 coastal_lakeshore_floods <- dangerousflood %>%
   filter(grepl("Coastal Flood", EVENT_TYPE) | grepl("Lakeshore Flood", EVENT_TYPE))
 ```
 
-I would like toexplore the relationship between flood occurrences and location.
-```{r}
+Explore the relationship between flood occurrences and location.
+```{r, echo=FALSE}
 # Filter for specific flood events using grepl for a pattern match
 dangerousflood_filtered <- dangerousflood %>%
   filter(grepl("Flood|Lakeshore Flood|Flash Flood|Coastal Flood", EVENT_TYPE)) %>%
@@ -500,7 +504,7 @@ The absence of precise longitude and latitude data for coastal and lakeshore flo
 
 In contrast, the Western states, aside from coastal areas like California, Oregon, and Washington, report fewer flood events. This could reflect the region's different climate and landscape characteristics, which include arid areas and mountainous terrains that are less susceptible to flooding compared to the flat and water-rich Eastern landscapes. However, coastal Western states, with their proximity to the Pacific Ocean, do experience their share of flood events, potentially related to Pacific storms and seasonal weather patterns.
 
-```{r}
+```{r, echo=FALSE}
 # Summarize the data to get the count of flood events per type per state and average coordinates
 dangerousflood_summary <- dangerousflood_filtered %>%
   group_by(STATE, EVENT_TYPE) %>%
@@ -537,7 +541,7 @@ Now I gave a state-based visualization of flood events, categorized by type and 
 ##### Property Damage
 Now financial losses can be high related with different types of flood that I would like to pursue investigating.
 
-```{r}
+```{r, echo=FALSE}
 # Function to convert damage property values to numeric
 convert_damage <- function(damage) {
   if (is.na(damage) || damage == "") {
@@ -566,7 +570,7 @@ dangerousflood$DAMAGE_PROPERTY_NUM <- sapply(dangerousflood$DAMAGE_PROPERTY, con
 
 Thus, I create a graph visualization below:
 
-```{r}
+```{r, echo=FALSE}
 # Summarize the damage by event type, omitting NAs
 damage_summary <- dangerousflood %>%
   filter(grepl("Flood|Lakeshore Flood|Flash Flood|Coastal Flood", EVENT_TYPE, ignore.case = TRUE)) %>%
@@ -586,7 +590,7 @@ ggplot(damage_summary, aes(x = reorder(EVENT_TYPE, Total_Damage), y = Total_Dama
 ```
 Flash floods stand out as the most financially destructive, incurring property damage expenditures that far exceed those of general floods—often referred to simply as 'floods' in the dataset—by approximately threefold. The scarcity of occurrences of lakeshore and coastal floods in the dataset precludes a comprehensive assessment of their average financial toll. However, the available figures suggest that while these flood types may be less frequent, when they do occur, the property damage might be significant. Thus, I ploted another grpah to indicate average losses.
 
-```{r}
+```{r, echo=FALSE}
 # Calculate the average damage by event type, omitting NAs
 average_damage_summary <- dangerousflood %>%
   filter(grepl("Flood|Lakeshore Flood|Flash Flood|Coastal Flood", EVENT_TYPE, ignore.case = TRUE)) %>%
@@ -609,7 +613,7 @@ ggplot(average_damage_summary, aes(x = reorder(EVENT_TYPE, -Average_Damage), y =
 The data and plot suggess that lakeshore flood, while less frequent, tend to be more devastating on average when they do occur. This could be attributed to the specific characteristics of lakeshore floods, which may impact areas with high property values or cause more extensive damage due to their nature. In contrast, general floods, often simply referred to as 'floods,' appear to be the least destructive on a per-event basis, which might earn them the moniker of being relatively 'gentle' floods. Nonetheless, it's important to note that the average property damage per flood event across all types is substantial, drawing attention to the significant financial burden these natural disasters can impose.
 
 ##### Crops Damage
-```{r}
+```{r, echo=FALSE}
 # Function to convert damage crops values to numeric
 convert_damage_crops <- function(damage) {
   if (is.na(damage) || damage == "") {
@@ -636,7 +640,7 @@ dangerousflood$DAMAGE_CROPS_NUM <- sapply(dangerousflood$DAMAGE_CROPS, convert_d
 
 ```
 
-```{r}
+```{r, echo=FALSE}
 # Calculate the average crop damage by event type, omitting NAs
 average_crop_damage_summary <- dangerousflood %>%
   filter(grepl("Flood|Lakeshore Flood|Flash Flood|Coastal Flood", EVENT_TYPE, ignore.case = TRUE)) %>%
@@ -660,7 +664,7 @@ Flash floods emerge as the predominant culprits for crop losses, underscoring th
 
 #### FLood Type vs Injuries/Deaths
 
-```{r warning=FALSE}
+```{r, warning=FALSE, echo=FALSE}
 dangerousflood <- dangerousflood %>%
   mutate(Total_Injuries = INJURIES_DIRECT + INJURIES_INDIRECT,
          Total_Deaths = DEATHS_DIRECT + DEATHS_INDIRECT)
@@ -693,7 +697,7 @@ Flash floods are a deadly phenomenon that can claim lives with their sudden onse
 
 
 ### EDA on Timeline
-```{r}
+```{r, echo=FALSE}
 # Aggregate the data to count the number of flood events per state for each year
 yearly_state_flood_counts <- dangerousflood %>%
   count(STATE, YEAR) %>%
@@ -722,4 +726,15 @@ This statement underscores the importance of the data findings and suggests the 
 
 ## Conclusion
 
-In reviewing the comprehensive NOAA dataset, it becomes evident that floods pose a significant risk, often resulting in fatalities rather than just injuries. The distribution of flood occurrences varies notably across different regions of the United States, with some states experiencing an increase in flood events in 2021 compared to the previous year. These incidents have led to a substantial number of deaths and injuries, underscoring the importance of effective disaster preparedness and response strategies. In particular, flash floods emerge as exceptionally perilous, causing considerable harm to individuals and communities. Furthermore, lakeshore floods, while less frequent, have the potential to inflict substantial property damage. Coastal areas, due to their relatively high incidence of flooding and associated economic losses, warrant special attention for mitigation and safety measures. Collectively, these insights highlight the critical need for heightened flood awareness and preparedness to safeguard lives and property against this natural disaster. 
+The analysis of the NOAA dataset underscores the significant threat floods pose across the United States, with their impact varying markedly by region. This exploration leads us to address three key questions regarding the nature and consequences of flood events:
+
+How Dangerous are Floods?
+The human cost of floods is alarmingly high, as evidenced by the data. Floods often result in fatalities, highlighting their potential to cause severe harm and loss of life. Flash floods stand out as particularly dangerous, with a rapid onset leaving little time for effective response. Our findings emphasize the critical need for enhanced flood preparedness and swift emergency action to minimize the risk to human life.
+
+How Expensive are Floods?
+Economically, floods impose a heavy toll on affected communities, causing extensive property and crop damage. The financial strain is not only borne by individuals but also impacts the broader economic system, underlining the need for comprehensive flood risk management and insurance strategies to alleviate the economic burden of such disasters.
+
+Community Patterns in Flood Losses:
+The distribution of flood-related losses is not uniform, suggesting that certain communities are more vulnerable than others. The distribution of flood occurrences varies notably across different regions of the United States, with some states experiencing an increase in flood events in 2021 compared to the previous year. Coastal areas, New York and Texas, due to their relatively high incidence of flooding and associated economic losses, warrant special attention for mitigation and safety measures.
+
+In summation, this report illuminates the dangers posed by floods, the huge economic costs they engender, and the uneven distribution of their impacts across communities. This gives an idea of the importance to enhance early warning systems and support the communities to flood-related devastation.
