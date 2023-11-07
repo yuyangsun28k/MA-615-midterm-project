@@ -1,6 +1,6 @@
 ---
 title: "eda"
-author: "thomas"
+author: "Yuyang Sun"
 date: "2023-11-03"
 output: html_document
 ---
@@ -17,11 +17,32 @@ library(stringr)
 library(plotly)
 library(maps)
 library(reshape2)
+library(randomForest)
+library(caret)
 ```
 
-## Data Upload
+## Project Description
+Floods are among the most destructive natural disasters. In the United States, natural disaster recovery is
+managed by (FEMA) Federal Emergency Managment Agency.
+One interesting aspect of floods is that they can occur almost anywhere. 
+Assemble a dataset to investigate floods in 2020-2021. Use the data resources below to assemble your data.
+Clean and organize the data. Write an EDA report.
+
+Questions to be answered:
+How dangerous are floods? 
+How expensive? 
+Is there any pattern to the kinds of communities that suffer losses from floods?
+
+## Datasets
+There are three files in total. Datasets from NOAA, datasets from FEMA and census data.
+
+NOAA: https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/
+FEMA1: https://www.fema.gov/openfema-data-page/fema-web-disaster-summaries-v1
+FEMA2: https://www.fema.gov/openfema-data-page/disaster-declarations-summaries-v2
+Census Data: https://www.census.gov (somewhere inside)
 
 ### Import NOAA Data
+This report focuses on data from 2020 to 2021.
 
 ```{r}
 # Import Datasets from NOAA
@@ -34,7 +55,9 @@ fata2021 <- read.csv("/Users/thomas/Downloads/ma615/midterm/NOAA/StormEvents_fat
 
 ```
 
+
 #### Merge detail2020 ,fata 2020 and location2020; detail2021, fata 2021 and location2021
+The detail, location and fatality datasets can be merged into one single dataset due to some common columns. This project only focuses on "FLOOD" as a disaster type. There should be four types of flodds in total: "Flood", "Lakeshore Flood", "Flash Flood", "Coastal Flood".
 
 ```{r}
 # Validate keys
@@ -70,15 +93,18 @@ print(unique_incidents)
 ```
 
 #### Clean NOAA Data
+The "combined" dataset is the raw dataset that I have right now. This step is to remove some columns that are not helpful for EDA, and I am going to choose some columns that I am interested.
+
 ```{r}
 #colnames(combined)
-combined <- combined[, -which(names(combined) %in% c("WFO", "CZ_TIMEZONE", "SOURCE","TOR_WIDTH", "TOR_LENGTH", "TOR_OTHER_CZ_FIPS", "TOR_OTHER_CZ_NAME", "TOR_OTHER_CZ_STATE", "TOR_F_SCALE","CZ_TYPE","CZ_FIPS","CZ_NAME","EVENT_NARRATIVE","EPISODE_NARRATIVE","END_AZIMUTH","END_RANGE","BEGIN_RANGE","BEGIN_AZIMUTH","LAT2","LON2","RANGE","AZIMUTH","LOCATION_INDEX","MAGNITUDE_TYPE","MAGNITUDE","STATE_FLIPS"))]
+combined <- combined[, -which(names(combined) %in% c("WFO", "CZ_TIMEZONE", "SOURCE","TOR_WIDTH", "TOR_LENGTH", "TOR_OTHER_CZ_FIPS", "TOR_OTHER_CZ_NAME", "TOR_OTHER_CZ_STATE", "TOR_F_SCALE","CZ_TYPE","CZ_FIPS","CZ_NAME","EVENT_NARRATIVE","EPISODE_NARRATIVE","END_AZIMUTH","END_RANGE","BEGIN_RANGE","BEGIN_AZIMUTH","LAT2","LON2","RANGE","AZIMUTH","LOCATION_INDEX","STATE_FLIPS"))]
 colnames(combined)
 ```
 
 ##### Check how dengerous flood is
+I am going to use some columns for later analysis. To be noticed, I have converted the incident begin date here (where incident corresponds to any flood).
 ```{r}
-dangerousflood <- combined[, c("EVENT_ID", "EPISODE_ID", "STATE", "YEAR", "MONTH_NAME", "EVENT_TYPE","INJURIES_DIRECT", "INJURIES_INDIRECT", "DEATHS_DIRECT", "DEATHS_INDIRECT",  "DAMAGE_PROPERTY", "DAMAGE_CROPS", "FLOOD_CAUSE", "CATEGORY","BEGIN_LOCATION", "END_LOCATION", "LATITUDE", "LONGITUDE","FATALITY_AGE", "FATALITY_SEX", "FATALITY_LOCATION","BEGIN_DATE_TIME")]
+dangerousflood <- combined[, c("EVENT_ID", "EPISODE_ID", "STATE", "YEAR", "MONTH_NAME", "EVENT_TYPE","INJURIES_DIRECT", "INJURIES_INDIRECT", "DEATHS_DIRECT", "DEATHS_INDIRECT",  "DAMAGE_PROPERTY", "DAMAGE_CROPS", "FLOOD_CAUSE", "CATEGORY","BEGIN_LOCATION", "END_LOCATION", "LATITUDE", "LONGITUDE","FATALITY_AGE", "FATALITY_SEX","FATALITY_LOCATION","BEGIN_DATE_TIME","MAGNITUDE_TYPE","MAGNITUDE")]
 
 # Convert BEGIN_DATE_TIME to Date format
 dangerousflood$BEGIN_DATE <- as.Date(dangerousflood$BEGIN_DATE_TIME, format = "%d-%b-%y %H:%M:%S")
@@ -89,6 +115,7 @@ head(dangerousflood$BEGIN_DATE)
 ```
 
 ### Import census data
+Well, I dont' find this dataset particular useful for now.
 
 ```{r}
 #census 5225
@@ -110,13 +137,9 @@ meta2021_1_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Downlo
 meta2021_2_0147 <- read.csv("/Users/thomas/Downloads/ma615/midterm/Census Download_2023-10-23T140147/ACSDT5Y2021.B25001-Data.csv")
 ```
 
-#### Edit census data 5225
-```{r}
-
-```
-
 
 ### Import FEMA datasets
+I found API endpoints from FEMA website and downloaded the data directly using API for both FEMA datasets.
 
 ```{r}
 #Import Datasets from FEMA v1
@@ -135,6 +158,7 @@ data <- fromJSON(rawToChar(response$content))
 floodv1 <- as.data.frame(data$FemaWebDisasterSummaries)
 
 ```
+Time for another FEMA datasets, however the sample size is small. I will pause it for now.
 
 ```{r}
 # Import Datasets from FEMA v2
@@ -161,19 +185,27 @@ print(unique_incidents)
 
 ```
 #### Merge FEMA datasets
+I tried to merge them into one dataset.
+
 ```{r}
 combinedFEMA <- floodv1 %>%
   inner_join(floodv2, by = "disasterNumber")
 ```
 
-## Deep cleaning NOAA
+## Deep cleaning NOAA dataset and EDA
+I decided to use NOAA for my report as there are many insightful columns for analysis.
 
-### Glimpse
+### Glimpse NOAA - dangerousflood
+
 ```{r}
 # glimpse
 glimpse(dangerousflood)
 ```
-### States counts
+
+### EDA on States
+I would like to know which state have the most counts of flood, top 5 states that have the highest frequency of being attacked by flood, and the property damage + crop damage for each state.
+
+#### Flood counts for states
 
 ```{r}
 # Check all states
@@ -194,50 +226,77 @@ top_states <- state_all %>%
 print(top_states)
 
 ```
-### State vs damage
-```{r warning=FALSE}
+It appears that flood occurrences are not evenly distributed across the United States, with some states experiencing a higher frequency of events. Notably, Virginia stands out with a total of 1,040 reported flood incidents for the years 2020 and 2021. On average, Virginia experienced nearly three flood events every day and this high frequency highlights the significant and persistent challenge for government and people. 
+
+Missouri had 797 events in total. Kentucky, Texas, and New York also recorded 696, 751, and 611 occurrences respectively.
+
+#### State vs Property and Crop Damages
+Now it's time to visualize the financial/agricultural damages of flood.
+
+##### Property Damage
+
+```{r}
 # Function to convert damage values to numeric
 convert_damage_to_numeric <- function(damage) {
-  # Remove any characters that are not digits or decimal points
-  damage <- gsub("[^0-9.]", "", as.character(damage))
-  # Convert to numeric
-  as.numeric(damage)
+  if (is.na(damage) || damage == "") {
+    return(NA)
+  }
+  # Remove commas, convert to upper case, and trim leading/trailing whitespace
+  damage <- gsub(",", "", damage)
+  damage <- toupper(trimws(as.character(damage)))
+
+  # Convert based on suffixes
+  multiplier <- 1
+  if (grepl("K$", damage)) {
+    multiplier <- 1e3
+    damage <- gsub("K$", "", damage)
+  } else if (grepl("M$", damage)) {
+    multiplier <- 1e6
+    damage <- gsub("M$", "", damage)
+  } else if (grepl("B$", damage)) {
+    multiplier <- 1e9
+    damage <- gsub("B$", "", damage)
+  }
+  
+  # Convert to numeric and multiply by the appropriate factor
+  numeric_damage <- as.numeric(damage)
+  if (!is.na(numeric_damage)) {
+    return(numeric_damage * multiplier)
+  } else {
+    return(NA)
+  }
 }
 
-# Clean DAMAGE_PROPERTY and DAMAGE_CROPS columns
-dangerousflood$DAMAGE_PROPERTY <- convert_damage_to_numeric(dangerousflood$DAMAGE_PROPERTY)
-dangerousflood$DAMAGE_CROPS <- convert_damage_to_numeric(dangerousflood$DAMAGE_CROPS)
+# Apply the function to the DAMAGE_PROPERTY and DAMAGE_CROPS columns
+dangerousflood$DAMAGE_PROPERTY_NUM <- sapply(dangerousflood$DAMAGE_PROPERTY, convert_damage_to_numeric)
+dangerousflood$DAMAGE_CROPS_NUM <- sapply(dangerousflood$DAMAGE_CROPS, convert_damage_to_numeric)
 
-# Now, summarize the total damage by state
+# Now, summarize the total damage by state using the new numeric columns
 state_damage <- dangerousflood %>%
   group_by(STATE) %>%
-  summarise(Total_Damage_Property = sum(DAMAGE_PROPERTY, na.rm = TRUE),
-            Total_Damage_Crops = sum(DAMAGE_CROPS, na.rm = TRUE))
+  summarise(Total_Damage_Property = sum(DAMAGE_PROPERTY_NUM, na.rm = TRUE),
+            Total_Damage_Crops = sum(DAMAGE_CROPS_NUM, na.rm = TRUE))
 
-# View the warnings from the last summarise operation
-dplyr::last_dplyr_warnings()
-state_damage <- dangerousflood %>%
-  group_by(STATE) %>%
-  summarise(Total_Damage_Property = sum(as.numeric(DAMAGE_PROPERTY), na.rm = TRUE),
-            Total_Damage_Crops = sum(as.numeric(DAMAGE_CROPS), na.rm = TRUE))
+# Check the summary data frame
+print(state_damage)
 
-#total property damage
+# Plot total property damage by state
 ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Property), y = Total_Damage_Property)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   labs(title = "Total Property Damage by State",
        x = "State",
-       y = "Total Property Damage") +
+       y = "Total Property Damage (USD)") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-# Log transform of total crop damage
-ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Crops), y = log(Total_Damage_Crops + 1))) +
-  geom_bar(stat = "identity", fill = "cyan4") +
-  labs(title = "Log of Total Crop Damage by State",
-       x = "State",
-       y = "Log of Total Crop Damage") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
-#Total Property Damage in a map visual
+The data indicates that New York incurs the highest total property damage from floods (over 15000k), when measured in thousands of U.S. dollars (K), followed by Mississippi, North Carolina, and Texas. This finding is consistent with the high frequency of flooding events reported in New York, Texas, and North Carolina. Despite a moderate number of floods, Mississippi experiences disproportionately high property damage, which could be attributed to factors related to its geographic and climatic conditions.
+
+Virginia has a slightly lower total property damage than the above states, and interestingly, Missouri, despite having a high number of flood incidents, does not correspond with similarly high levels of property damage. That might suggest an effective flood management by the state government or some location advantages that mitigate the cost.
+
+##### Total Property Damage in a map visual
+```{r}
+
 # Get US map data
 states_map <- map_data("state")
 
@@ -258,7 +317,29 @@ ggplot() +
   theme_void() +
   theme(legend.position = "right")
 
+```
+The distribution of flood-related property damage across the United States reveals a distinct pattern, with the eastern regions, particularly the Northeast, sustaining the most significant financial impact.
 
+The Northwest and Northern states report relatively minimal damage, which might reflect less frequent flood events. Conversely, the Southern states experience severe property damage due to flooding. This severity could be due to a combination of factors, including the prevalence of hurricanes and tropical storms that bring intense rainfall.
+
+##### Crops Damage
+
+```{r}
+# Log transform of total crop damage
+ggplot(state_damage, aes(x = reorder(STATE, -Total_Damage_Crops), y = log(Total_Damage_Crops + 1))) +
+  geom_bar(stat = "identity", fill = "cyan4") +
+  labs(title = "Log of Total Crop Damage by State",
+       x = "State",
+       y = "Log of Total Crop Damage") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+The distribution of flood-related crop damage across various states exhibits a pronounced right skew, thus I take a log transformation to make the plot easier to interpret.
+
+However, it's important to note that the absence of crop damage data for many states and I could not get those data. Apparently, the NOAA datasets have some 'NA' values where I should pay attention to. Despite this limitation, an examination of the available data reveals that states such as the Dakotas, Minnesota, and Iowa have sustained the most severe crop damage. This pattern may reflect these states' considerable agricultural activities and their losses on agricultural lands due to flood.
+
+##### Total Property Damage in a map visual
+```{r}
 # Aggregate total crop damages by state
 state_crop_damage_totals <- dangerousflood %>%
   group_by(STATE) %>%
@@ -285,10 +366,14 @@ ggplot() +
         legend.text = element_text(size = 8)) # Adjust legend text size
 
 ```
+Visual analysis of the crop damage data illuminates a notable concentration of severe impacts in the northern part of the United States. States like the Dakotas, Minnesota, and Iowa, which are characterized by extensive agricultural activity, appear to bear the brunt of the damage. These regions, often referred to as the nation's breadbasket, may be particularly susceptible due to their reliance on large-scale farming and the potential for flooding to disrupt vast swathes of cropland.
 
+In the South, Texas stands out with significant crop damage, possibly attributable to its size, diverse climate zones, and exposure to extreme weather events such as hurricanes, which can bring about widespread flooding. The damage in these southern areas, though less concentrated than in the North, still represents a substantial economic impact, highlighting the vulnerability of agricultural sectors to flooding across varied geographical landscapes.
 
 
 ### Injuries & Deaths
+Investigating the relationship between flood-related injuries and fatalities and their distribution among the states could provide insights into the human cost of these natural disasters and understand how dangerous flood is.
+
 ```{r}
 # Summarize death counts by state
 death_counts_by_state <- dangerousflood %>%
@@ -315,6 +400,8 @@ p_combined
 
 
 ```
+The data indicates that Tennessee and New York experience the highest numbers of deaths and injuries due to flooding, suggesting these states are particularly vulnerable to the more perilous consequences of such events. Texas and Arizona also report significant numbers, where probably due to the geographic location.
+
 
 ```{r}
 # Convert BEGIN_DATE_TIME to Date format
@@ -342,3 +429,246 @@ p_deaths <- plot_ly(data = injuries_deaths_by_date, x = ~BEGIN_DATE, y = ~Total_
 subplot(p_injuries, p_deaths, nrows = 2, shareX = TRUE, titleX = FALSE)
 
 ```
+What I did here is to do a time series of how injuries and deaths occured in this particular timeframe. It turned out that between July 2021 and October 2021, a period that coincides with some of the most devastating floods. This trend underscores the heightened risk of serious harm during such events, as evidenced by the consistent occurrence of deaths throughout this timeframe. Thus, we can't conclude flood as a seasonal event.This data highlights the critical importance of effective flood management and emergency response measures all over the year, particularly during periods of high risk.
+
+### EDA ON EVENT_TYPE / CAUSE
+The dataset contains four flood types and I am intrigued by the potential connections between 
+flood type and causes. Thus, I built a contingency table that show all the detailed information. Such a table would organize the data to show the frequency of each cause within each flood type, allowing you to identify patterns or trends in the data.
+```{r}
+# Contingency Table without NA values
+# Contingency Table
+table(dangerousflood$FLOOD_CAUSE, dangerousflood$EVENT_TYPE)
+```
+The contingency table reveals a distinct distribution of causes across different flood types, with 'Heavy Rain' being the predominant cause for both 'Flash Flood' and the more general category labeled as 'Flood.' However, for 'Lakeshore Flood' and 'Coastal Flood,' the dataset does not provide information on the causes, leaving a gap in our understanding of the factors that contribute to these specific types of flooding. This absence of data prevents us from drawing concrete conclusions about what triggers 'Lakeshore Flood' and 'Coastal Flood' events, highlighting an area where further data collection and research are necessary to complete the picture of flood causality.
+
+
+#### Flood occurences in the country 
+Thus, we created a new subset called 'coastal_lakeshore_floods', which only contains 'Lakeshore Flood' and 'Coastal Flood'.
+```{r}
+coastal_lakeshore_floods <- dangerousflood %>%
+  filter(grepl("Coastal Flood", EVENT_TYPE) | grepl("Lakeshore Flood", EVENT_TYPE))
+```
+
+I would like toexplore the relationship between flood occurrences and location.
+```{r}
+# Filter for specific flood events using grepl for a pattern match
+dangerousflood_filtered <- dangerousflood %>%
+  filter(grepl("Flood|Lakeshore Flood|Flash Flood|Coastal Flood", EVENT_TYPE)) %>%
+  filter(between(LATITUDE, 24, 49.3843), between(LONGITUDE, -125, -66.93457)) # Bounds for the continental US
+
+# Get the map data for the US
+us_map <- map_data("state")
+
+# Plot the map with flood events
+ggplot() +
+  geom_polygon(data = us_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
+  geom_point(data = dangerousflood_filtered, aes(x = LONGITUDE, y = LATITUDE, color = EVENT_TYPE), size = 1, alpha = 0.8) +
+  scale_color_viridis_d(guide = guide_legend(override.aes = list(size=4))) + # Use a larger size for legend items
+  labs(title = "Flood Events in the United States by Type", x = "Longitude", y = "Latitude") +
+  theme_minimal()
+```
+
+
+
+The absence of precise longitude and latitude data for coastal and lakeshore floods in the dataset does present a limitation for detailed geospatial analysis. Nevertheless, it is reasonable to infer that such events predominantly occur along coastlines and lake shores. Despite this data gap, the overall trend suggests a higher incidence of floods in the eastern regions of the United States. This pattern may be influenced by a variety of factors, including regional climate conditions, topography, and the presence of water bodies such as rivers and estuaries that are prone to overflowing.
+
+In contrast, the Western states, aside from coastal areas like California, Oregon, and Washington, report fewer flood events. This could reflect the region's different climate and landscape characteristics, which include arid areas and mountainous terrains that are less susceptible to flooding compared to the flat and water-rich Eastern landscapes. However, coastal Western states, with their proximity to the Pacific Ocean, do experience their share of flood events, potentially related to Pacific storms and seasonal weather patterns.
+
+```{r}
+# Summarize the data to get the count of flood events per type per state and average coordinates
+dangerousflood_summary <- dangerousflood_filtered %>%
+  group_by(STATE, EVENT_TYPE) %>%
+  summarize(Count = n(),
+            AVG_LATITUDE = mean(LATITUDE, na.rm = TRUE),
+            AVG_LONGITUDE = mean(LONGITUDE, na.rm = TRUE)) %>%
+  ungroup()
+
+# Get the map data for the US
+us_map <- map_data("state")
+
+# Define custom colors for the flood types
+custom_colors <- c("Flood" = "blue", "Flash Flood" = "orange")
+
+# Plot the map with flood events, varying the size of the dot by the count of events and using custom colors
+ggplot() +
+  geom_polygon(data = us_map, aes(x = long, y = lat, group = group), fill = "white", color = "black") +
+  geom_point(data = dangerousflood_summary, aes(x = AVG_LONGITUDE, y = AVG_LATITUDE, size = Count, color = EVENT_TYPE), alpha = 0.6) +
+  scale_size(range = c(1, 6)) + # Adjust the range for the size of the points as needed, making them smaller
+  scale_color_manual(values = custom_colors) + # Use custom colors
+  labs(title = "Flood Events in the United States by Type", x = "Longitude", y = "Latitude") +
+  theme_minimal() +
+  theme(legend.position = "bottom") # Move legend to bottom for better visibility
+
+# Remove the summary warning messages
+dplyr::last_dplyr_warnings()
+
+```
+
+Now I gave a state-based visualization of flood events, categorized by type and delineated by state, reveals a pronounced concentration of larger circles—denoting a higher number of floods—in the eastern regions. This correlates with the elevated levels of property damage recorded in these areas. On the other hand, the West Coast, particularly Oregon, and Washington, displays a distinct pattern: these states experience a moderate prevalence of flood and flash flood events, yet with a comparatively lower impact on property damage (except for California). 
+
+#### Flood Type vs Financial Loss
+
+##### Property Damage
+Now financial losses can be high related with different types of flood that I would like to pursue investigating.
+
+```{r}
+# Function to convert damage property values to numeric
+convert_damage <- function(damage) {
+  if (is.na(damage) || damage == "") {
+    return(NA)
+  }
+  
+  # Remove commas and convert to upper case
+  damage <- toupper(gsub(",", "", damage))
+  
+  # Convert based on suffixes
+  if (grepl("K", damage)) {
+    return(as.numeric(gsub("K", "", damage)) * 1e3)
+  } else if (grepl("M", damage)) {
+    return(as.numeric(gsub("M", "", damage)) * 1e6)
+  } else if (grepl("B", damage)) {
+    return(as.numeric(gsub("B", "", damage)) * 1e9)
+  } else {
+    return(as.numeric(damage))
+  }
+}
+
+# Apply the function to the DAMAGE_PROPERTY column
+dangerousflood$DAMAGE_PROPERTY_NUM <- sapply(dangerousflood$DAMAGE_PROPERTY, convert_damage, USE.NAMES = FALSE)
+
+```
+
+Thus, I create a graph visualization below:
+
+```{r}
+# Summarize the damage by event type, omitting NAs
+damage_summary <- dangerousflood %>%
+  filter(grepl("Flood|Lakeshore Flood|Flash Flood|Coastal Flood", EVENT_TYPE, ignore.case = TRUE)) %>%
+  filter(!is.na(DAMAGE_PROPERTY_NUM)) %>%
+  group_by(EVENT_TYPE) %>%
+  summarize(Total_Damage = sum(DAMAGE_PROPERTY_NUM, na.rm = TRUE),
+            Average_Damage = mean(DAMAGE_PROPERTY_NUM, na.rm = TRUE),
+            .groups = 'drop') # Drop grouping structure after summarizing
+
+# Create a bar plot to compare total damage by event type
+ggplot(damage_summary, aes(x = reorder(EVENT_TYPE, Total_Damage), y = Total_Damage, fill = EVENT_TYPE)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Total Property Damage by Flood Event Type", x = "Event Type", y = "Total Damage (USD)") +
+  scale_fill_viridis_d() # Use a viridis color scale for the fill
+
+```
+Flash floods stand out as the most financially destructive, incurring property damage expenditures that far exceed those of general floods—often referred to simply as 'floods' in the dataset—by approximately threefold. The scarcity of occurrences of lakeshore and coastal floods in the dataset precludes a comprehensive assessment of their average financial toll. However, the available figures suggest that while these flood types may be less frequent, when they do occur, the property damage might be significant. Thus, I ploted another grpah to indicate average losses.
+
+```{r}
+# Calculate the average damage by event type, omitting NAs
+average_damage_summary <- dangerousflood %>%
+  filter(grepl("Flood|Lakeshore Flood|Flash Flood|Coastal Flood", EVENT_TYPE, ignore.case = TRUE)) %>%
+  filter(!is.na(DAMAGE_PROPERTY_NUM)) %>%
+  group_by(EVENT_TYPE) %>%
+  summarize(Average_Damage = mean(DAMAGE_PROPERTY_NUM, na.rm = TRUE),
+            .groups = 'drop') # Drop grouping structure after summarizing
+
+# Print the average damage summary
+print(average_damage_summary)
+# Create a bar plot to compare average damage by event type
+ggplot(average_damage_summary, aes(x = reorder(EVENT_TYPE, -Average_Damage), y = Average_Damage, fill = EVENT_TYPE)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Average Property Damage by Flood Event Type", x = "Event Type", y = "Average Damage (USD)") +
+  scale_fill_viridis_d() # Use a viridis color scale for the fill
+
+```
+
+The data and plot suggess that lakeshore flood, while less frequent, tend to be more devastating on average when they do occur. This could be attributed to the specific characteristics of lakeshore floods, which may impact areas with high property values or cause more extensive damage due to their nature. In contrast, general floods, often simply referred to as 'floods,' appear to be the least destructive on a per-event basis, which might earn them the moniker of being relatively 'gentle' floods. Nonetheless, it's important to note that the average property damage per flood event across all types is substantial, drawing attention to the significant financial burden these natural disasters can impose.
+
+##### Crops Damage
+```{r}
+# Function to convert damage crops values to numeric
+convert_damage_crops <- function(damage) {
+  if (is.na(damage) || damage == "") {
+    return(NA)
+  }
+  
+  # Remove commas and convert to upper case
+  damage <- toupper(gsub(",", "", damage))
+  
+  # Convert based on suffixes
+  if (grepl("K", damage)) {
+    return(as.numeric(gsub("K", "", damage)) * 1e3)
+  } else if (grepl("M", damage)) {
+    return(as.numeric(gsub("M", "", damage)) * 1e6)
+  } else if (grepl("B", damage)) {
+    return(as.numeric(gsub("B", "", damage)) * 1e9)
+  } else {
+    return(as.numeric(damage))
+  }
+}
+
+# Apply the function to the DAMAGE_CROPS column
+dangerousflood$DAMAGE_CROPS_NUM <- sapply(dangerousflood$DAMAGE_CROPS, convert_damage_crops, USE.NAMES = FALSE)
+
+```
+
+```{r}
+# Calculate the average crop damage by event type, omitting NAs
+average_crop_damage_summary <- dangerousflood %>%
+  filter(grepl("Flood|Lakeshore Flood|Flash Flood|Coastal Flood", EVENT_TYPE, ignore.case = TRUE)) %>%
+  filter(!is.na(DAMAGE_CROPS_NUM)) %>%
+  group_by(EVENT_TYPE) %>%
+  summarize(Average_Crop_Damage = mean(DAMAGE_CROPS_NUM, na.rm = TRUE),
+            .groups = 'drop') # Drop grouping structure after summarizing
+
+# Print the average crop damage summary
+print(average_crop_damage_summary)
+# Create a bar plot to compare average crop damage by event type
+ggplot(average_crop_damage_summary, aes(x = reorder(EVENT_TYPE, -Average_Crop_Damage), y = Average_Crop_Damage, fill = EVENT_TYPE)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Average Crop Damage by Flood Event Type", x = "Event Type", y = "Average Damage (USD)") +
+  scale_fill_viridis_d() # Use a viridis color scale for the fill
+
+```
+
+
+#### models to check
+```{r}
+# Rows with known values for INJURIES_DIRECT
+known_injuries <- dangerousflood[!is.na(dangerousflood$INJURIES_DIRECT), ]
+
+# Rows with missing values for INJURIES_DIRECT
+missing_injuries <- dangerousflood[is.na(dangerousflood$INJURIES_DIRECT), ]
+
+```
+
+```{r}
+# Split the known data
+known_direct <- known_injuries[!is.na(known_injuries$INJURIES_DIRECT), ]
+known_indirect <- known_injuries[!is.na(known_injuries$INJURIES_INDIRECT), ]
+
+# Define the control using a 10-fold cross-validation
+control <- trainControl(method="cv", number=10)
+
+# Train the model and perform cross-validation for INJURIES_DIRECT
+features_direct <- known_direct[, c("EVENT_TYPE", "STATE", "DAMAGE_PROPERTY")] # replace with actual feature names
+target_direct <- known_direct$INJURIES_DIRECT
+fit_direct <- train(features_direct, target_direct, method="rf", trControl=control)
+print(fit_direct)
+
+# Train the model and perform cross-validation for INJURIES_INDIRECT
+features_indirect <- known_indirect[, c("EVENT_TYPE", "STATE", "DAMAGE_PROPERTY")] # replace with actual feature names
+target_indirect <- known_indirect$INJURIES_INDIRECT
+fit_indirect <- train(features_indirect, target_indirect, method="rf", trControl=control)
+print(fit_indirect)
+
+# Improving the model based on cross-validation results
+# You can adjust the model parameters like the number of trees (ntree) or the number of variables tried at each split (mtry) based on the cross-validation results
+
+# Re-train the improved model on the entire known dataset for INJURIES_DIRECT
+improved_rf_model_direct <- randomForest(INJURIES_DIRECT ~ EVENT_TYPE + STATE + DAMAGE_PROPERTY, data = known_direct, na.action = na.omit, ntree=500, mtry=3)
+
+# Re-train the improved model on the entire known dataset for INJURIES_INDIRECT
+improved_rf_model_indirect <- randomForest(INJURIES_INDIRECT ~ EVENT_TYPE + STATE + DAMAGE_PROPERTY, data = known_indirect, na.action = na.omit, ntree=500, mtry=3)
+```
+
+
